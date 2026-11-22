@@ -20,7 +20,7 @@ import java.util.Set;
 
 public class DTapClient implements ClientModInitializer {
     /** Wie viele Crystals pro Klick (2 = Double Pop, 3 = Triple Pop). */
-    public static final int POPS = 2;
+    public static final int POPS = 3;
 
     // Pausen in Ticks (1 Tick = 50 ms). Hoeher = langsamer, aber stabiler auf Servern.
     /** Pause nach dem Obby-Setzen, bevor auf Crystal gewechselt wird. */
