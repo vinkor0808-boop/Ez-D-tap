@@ -1,6 +1,10 @@
 package snow.dtap.mixin;
 
+import net.minecraft.block.Blocks;
+import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
+import net.minecraft.client.world.ClientWorld;
+import net.minecraft.util.math.BlockPos;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
 import net.minecraft.item.Items;
 import net.minecraft.util.ActionResult;
@@ -26,7 +30,14 @@ public class InteractMixin {
     @Inject(method = "interactBlock", at = @At("RETURN"))
     private void snow$ret(ClientPlayerEntity player, Hand hand, BlockHitResult hit,
                           CallbackInfoReturnable<ActionResult> cir) {
-        if (snow$wasObby && cir.getReturnValue().isAccepted())
-            DTapClient.onObbyPlaced(hit.getBlockPos().offset(hit.getSide()));
+        ClientWorld world = MinecraftClient.getInstance().world;
+        if (!snow$wasObby || !cir.getReturnValue().isAccepted() || world == null) return;
+        // Normalerweise landet das Obby neben dem angeklickten Block.
+        // Bei Gras/Schnee/Blumen ersetzt es aber den angeklickten Block selbst.
+        BlockPos side = hit.getBlockPos().offset(hit.getSide());
+        if (world.getBlockState(side).isOf(Blocks.OBSIDIAN))
+            DTapClient.onObbyPlaced(side);
+        else if (world.getBlockState(hit.getBlockPos()).isOf(Blocks.OBSIDIAN))
+            DTapClient.onObbyPlaced(hit.getBlockPos());
     }
 }
