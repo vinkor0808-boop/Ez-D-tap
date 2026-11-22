@@ -22,6 +22,16 @@ public class DTapClient implements ClientModInitializer {
     /** Wie viele Crystals pro Klick (2 = Double Pop, 3 = Triple Pop). */
     public static final int POPS = 2;
 
+    // Pausen in Ticks (1 Tick = 50 ms). Hoeher = langsamer, aber stabiler auf Servern.
+    /** Pause nach dem Obby-Setzen, bevor auf Crystal gewechselt wird. */
+    public static final int SWITCH_DELAY = 2;
+    /** Pause zwischen Crystal setzen und Crystal zerstoeren. */
+    public static final int BREAK_DELAY = 1;
+    /** Pause nach dem Zerstoeren, bevor der naechste Crystal gesetzt wird. */
+    public static final int PLACE_DELAY = 2;
+
+    static int wait = 0;
+
     static BlockPos obbyPos;
     static int stage = 0, timeout = 0, popped = 0;
     /** Slot mit dem Obby (zum Zurueckwechseln) und Slot mit den Crystals. */
@@ -45,7 +55,8 @@ public class DTapClient implements ClientModInitializer {
         if (slot < 0) return;
         obbySlot = mc.player.getInventory().getSelectedSlot();
         crystalSlot = slot;
-        pendingSwitch = true;   // Wechsel passiert im naechsten Tick
+        pendingSwitch = true;   // Wechsel passiert nach SWITCH_DELAY
+        wait = SWITCH_DELAY;
         obbyPos = pos;
         stage = 1;
         popped = 0;
@@ -67,13 +78,18 @@ public class DTapClient implements ClientModInitializer {
                 return;
             }
             if (pendingSwitch) {
+                if (wait > 0) { wait--; return; }
                 mc.player.getInventory().setSelectedSlot(crystalSlot);
                 pendingSwitch = false;
                 return;
             }
-            if (mc.options.attackKey.wasPressed()) stage = 2;
+            if (mc.options.attackKey.wasPressed()) {
+                stage = 2;
+                timeout = 40; // nach dem Klick nochmal 2 Sekunden fuer die Pops
+            }
             return;
         }
+        if (wait > 0) { wait--; return; }   // Pause zwischen den Aktionen
         if (stage == 2) {               // Crystal aufs Obby setzen
             if (!mc.player.getMainHandStack().isOf(Items.END_CRYSTAL)) { stage = 0; return; }
             if (!mc.world.getBlockState(obbyPos).isOf(Blocks.OBSIDIAN)) { stage = 0; return; }
@@ -84,6 +100,7 @@ public class DTapClient implements ClientModInitializer {
             mc.interactionManager.interactBlock(mc.player, Hand.MAIN_HAND, hit);
             mc.player.swingHand(Hand.MAIN_HAND);
             stage = 3;
+            wait = BREAK_DELAY;
             return;
         }
         if (stage == 3) {               // Crystal zerstoeren
@@ -95,6 +112,7 @@ public class DTapClient implements ClientModInitializer {
             attacked.add(crystal.getId());
             popped++;
             stage = popped < POPS ? 2 : 0;
+            wait = PLACE_DELAY;
         }
     }
 
