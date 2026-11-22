@@ -24,13 +24,15 @@ public class DTapClient implements ClientModInitializer {
 
     // Pausen in Ticks (1 Tick = 50 ms). Hoeher = langsamer, aber stabiler auf Servern.
     /** Pause nach dem Obby-Setzen, bevor auf Crystal gewechselt wird. */
-    public static final int SWITCH_DELAY = 3;
+    public static final int SWITCH_DELAY = 2;
     /** Pause zwischen Crystal setzen und Crystal zerstoeren. */
-    public static final int BREAK_DELAY = 2;
+    public static final int BREAK_DELAY = 1;
     /** Pause nach dem Zerstoeren, bevor der naechste Crystal gesetzt wird. */
-    public static final int PLACE_DELAY = 3;
+    public static final int PLACE_DELAY = 2;
 
     static int wait = 0;
+    /** Wie lange schon auf den Crystal gewartet wird, und wie oft neu gesetzt wurde. */
+    static int spawnWait = 0, retries = 0;
 
     static BlockPos obbyPos;
     static int stage = 0, timeout = 0, popped = 0;
@@ -60,6 +62,8 @@ public class DTapClient implements ClientModInitializer {
         obbyPos = pos;
         stage = 1;
         popped = 0;
+        retries = 0;
+        spawnWait = 0;
         attacked.clear();
         timeout = 60; // 3 Sekunden Zeit fuer den Klick
     }
@@ -70,13 +74,7 @@ public class DTapClient implements ClientModInitializer {
 
         if (stage == 1) {               // warten auf deinen einen Linksklick
             // Server hat das Obby abgelehnt (Ghost Block)? -> zurueck auf Obby, damit du direkt neu setzen kannst
-            if (!mc.world.getBlockState(obbyPos).isOf(Blocks.OBSIDIAN)) {
-                if (obbySlot >= 0 && mc.player.getInventory().getStack(obbySlot).isOf(Items.OBSIDIAN))
-                    mc.player.getInventory().setSelectedSlot(obbySlot);
-                pendingSwitch = false;
-                stage = 0;
-                return;
-            }
+            if (obbyGone(mc)) { backToObby(mc); return; }
             if (pendingSwitch) {
                 if (wait > 0) { wait--; return; }
                 mc.player.getInventory().setSelectedSlot(crystalSlot);
@@ -92,7 +90,7 @@ public class DTapClient implements ClientModInitializer {
         if (wait > 0) { wait--; return; }   // Pause zwischen den Aktionen
         if (stage == 2) {               // Crystal aufs Obby setzen
             if (!mc.player.getMainHandStack().isOf(Items.END_CRYSTAL)) { stage = 0; return; }
-            if (!mc.world.getBlockState(obbyPos).isOf(Blocks.OBSIDIAN)) { stage = 0; return; }
+            if (obbyGone(mc)) { backToObby(mc); return; }
             // Alter Crystal noch da? Erst warten, bis der Server ihn entfernt hat, sonst blockiert er den Platz
             if (!crystalsOnObby(mc, true).isEmpty()) return;
             BlockHitResult hit = new BlockHitResult(
@@ -101,11 +99,21 @@ public class DTapClient implements ClientModInitializer {
             mc.player.swingHand(Hand.MAIN_HAND);
             stage = 3;
             wait = BREAK_DELAY;
+            spawnWait = 0;
             return;
         }
         if (stage == 3) {               // Crystal zerstoeren
+            if (obbyGone(mc)) { backToObby(mc); return; }
             List<EndCrystalEntity> list = crystalsOnObby(mc, false);
-            if (list.isEmpty()) return; // Server hat den neuen noch nicht gespawnt
+            if (list.isEmpty()) {       // Server hat den neuen noch nicht gespawnt
+                // Crystal kam nicht an (Setzen verschluckt)? -> nochmal setzen, max. 2 Versuche
+                if (++spawnWait > 8) {
+                    spawnWait = 0;
+                    if (++retries > 2) { stage = 0; return; }
+                    stage = 2;
+                }
+                return;
+            }
             EndCrystalEntity crystal = list.get(0);
             mc.interactionManager.attackEntity(mc.player, crystal);
             mc.player.swingHand(Hand.MAIN_HAND);
@@ -120,6 +128,18 @@ public class DTapClient implements ClientModInitializer {
     static List<EndCrystalEntity> crystalsOnObby(MinecraftClient mc, boolean alreadyAttacked) {
         return mc.world.getEntitiesByClass(EndCrystalEntity.class, new Box(obbyPos.up()).expand(0.5),
                 e -> e.isAlive() && attacked.contains(e.getId()) == alreadyAttacked);
+    }
+
+    static boolean obbyGone(MinecraftClient mc) {
+        return !mc.world.getBlockState(obbyPos).isOf(Blocks.OBSIDIAN);
+    }
+
+    /** Obby ist weg (Ghost Block) -> zurueck auf den Obby-Slot, damit du direkt neu setzen kannst. */
+    static void backToObby(MinecraftClient mc) {
+        if (obbySlot >= 0 && mc.player.getInventory().getStack(obbySlot).isOf(Items.OBSIDIAN))
+            mc.player.getInventory().setSelectedSlot(obbySlot);
+        pendingSwitch = false;
+        stage = 0;
     }
 
     static int findCrystalSlot(MinecraftClient mc) {
