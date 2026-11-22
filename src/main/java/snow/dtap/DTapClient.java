@@ -24,11 +24,11 @@ public class DTapClient implements ClientModInitializer {
 
     // Pausen in Ticks (1 Tick = 50 ms). Hoeher = langsamer, aber stabiler auf Servern.
     /** Pause nach dem Obby-Setzen, bevor auf Crystal gewechselt wird. */
-    public static final int SWITCH_DELAY = 2;
+    public static final int SWITCH_DELAY = 3;
     /** Pause zwischen Crystal setzen und Crystal zerstoeren. */
-    public static final int BREAK_DELAY = 1;
+    public static final int BREAK_DELAY = 2;
     /** Pause nach dem Zerstoeren, bevor der naechste Crystal gesetzt wird. */
-    public static final int PLACE_DELAY = 2;
+    public static final int PLACE_DELAY = 3;
 
     static int wait = 0;
 
