@@ -24,6 +24,10 @@ public class DTapClient implements ClientModInitializer {
 
     static BlockPos obbyPos;
     static int stage = 0, timeout = 0, popped = 0;
+    /** Slot mit dem Obby (zum Zurueckwechseln) und Slot mit den Crystals. */
+    static int obbySlot = -1, crystalSlot = -1;
+    /** Crystal-Wechsel erst im naechsten Tick, nicht im selben Moment wie das Obby-Setzen. */
+    static boolean pendingSwitch = false;
     /** IDs der Crystals, die wir schon angegriffen haben (bis der Server sie entfernt, sind sie client-seitig noch da). */
     static final Set<Integer> attacked = new HashSet<>();
 
@@ -39,7 +43,9 @@ public class DTapClient implements ClientModInitializer {
         if (mc.player == null) return;
         int slot = findCrystalSlot(mc);
         if (slot < 0) return;
-        mc.player.getInventory().setSelectedSlot(slot);
+        obbySlot = mc.player.getInventory().getSelectedSlot();
+        crystalSlot = slot;
+        pendingSwitch = true;   // Wechsel passiert im naechsten Tick
         obbyPos = pos;
         stage = 1;
         popped = 0;
@@ -52,6 +58,19 @@ public class DTapClient implements ClientModInitializer {
         if (--timeout <= 0) { stage = 0; return; }
 
         if (stage == 1) {               // warten auf deinen einen Linksklick
+            // Server hat das Obby abgelehnt (Ghost Block)? -> zurueck auf Obby, damit du direkt neu setzen kannst
+            if (!mc.world.getBlockState(obbyPos).isOf(Blocks.OBSIDIAN)) {
+                if (obbySlot >= 0 && mc.player.getInventory().getStack(obbySlot).isOf(Items.OBSIDIAN))
+                    mc.player.getInventory().setSelectedSlot(obbySlot);
+                pendingSwitch = false;
+                stage = 0;
+                return;
+            }
+            if (pendingSwitch) {
+                mc.player.getInventory().setSelectedSlot(crystalSlot);
+                pendingSwitch = false;
+                return;
+            }
             if (mc.options.attackKey.wasPressed()) stage = 2;
             return;
         }
