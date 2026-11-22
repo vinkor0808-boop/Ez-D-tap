@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 1,
+  "id": "snowdtap",
+  "version": "${version}",
+  "name": "Snow DTap",
+  "description": "Obby platzieren, ein Klick, Double Pop.",
+  "authors": ["Snoww"],
+  "environment": "client",
+  "entrypoints": { "client": ["snow.dtap.DTapClient"] },
+  "mixins": ["snowdtap.mixins.json"],
+  "depends": { "fabricloader": ">=0.18.0", "fabric-api": "*", "minecraft": "1.21.11" }
+}

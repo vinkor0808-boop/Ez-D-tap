@@ -1,0 +1,7 @@
+{
+  "required": true,
+  "package": "snow.dtap.mixin",
+  "compatibilityLevel": "JAVA_21",
+  "client": ["InteractMixin"],
+  "injectors": { "defaultRequire": 1 }
+}
