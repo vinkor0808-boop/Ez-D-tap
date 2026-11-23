@@ -84,7 +84,11 @@ public class DTapClient implements ClientModInitializer {
         }
     }
 
-    static boolean obbyGone(MinecraftClient mc) {
+        /** true, solange die Mod gleich auf Crystal wechselt (dann blockt das Mixin weitere Obby-Klicks). */
+    public static boolean isSwitchPending() {
+        return enabled && pendingSwitch;
+    }
+static boolean obbyGone(MinecraftClient mc) {
         return !mc.world.getBlockState(obbyPos).isOf(Blocks.OBSIDIAN);
     }
 
