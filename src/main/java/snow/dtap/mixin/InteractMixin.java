@@ -3,13 +3,13 @@ package snow.dtap.mixin;
 import net.minecraft.block.Blocks;
 import net.minecraft.client.MinecraftClient;
 import net.minecraft.client.network.ClientPlayerEntity;
-import net.minecraft.client.world.ClientWorld;
-import net.minecraft.util.math.BlockPos;
 import net.minecraft.client.network.ClientPlayerInteractionManager;
+import net.minecraft.client.world.ClientWorld;
 import net.minecraft.item.Items;
 import net.minecraft.util.ActionResult;
 import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
+import net.minecraft.util.math.BlockPos;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -21,10 +21,15 @@ import snow.dtap.DTapClient;
 public class InteractMixin {
     @Unique private boolean snow$wasObby;
 
-    @Inject(method = "interactBlock", at = @At("HEAD"))
+    @Inject(method = "interactBlock", at = @At("HEAD"), cancellable = true)
     private void snow$head(ClientPlayerEntity player, Hand hand, BlockHitResult hit,
                            CallbackInfoReturnable<ActionResult> cir) {
         snow$wasObby = player.getStackInHand(hand).isOf(Items.OBSIDIAN);
+        // Waehrend die Mod gleich auf Crystal wechselt: kein zweites Obby setzen, wenn du schon Rechtsklick spammst
+        if (snow$wasObby && DTapClient.isSwitchPending()) {
+            snow$wasObby = false;
+            cir.setReturnValue(ActionResult.FAIL);
+        }
     }
 
     @Inject(method = "interactBlock", at = @At("RETURN"))
